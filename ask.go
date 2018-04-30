@@ -134,7 +134,7 @@ func askMoney(question string, def string) money.M {
 
 func askDate(question string, def time.Time) time.Time {
 	var res time.Time
-	askAny(question, def, func(s string) error {
+	askAny(question, def.Format("02/01/06"), func(s string) error {
 		r, err := time.Parse("02/01/06", s)
 		if err != nil {
 			return err

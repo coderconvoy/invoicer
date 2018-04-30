@@ -5,13 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/coderconvoy/money"
 )
 
 const (
-	CASH = 1 << iota
+	IV_DATE = "02/01/06"
+	CASH    = 1 << iota
 	BACS
 )
 
@@ -25,6 +27,8 @@ type Job struct {
 type Invoice struct {
 	Client  string
 	Address string
+	ID      string
+	Ref     string
 	Methods int
 	Date    time.Time
 	Jobs    []Job
@@ -63,6 +67,11 @@ func BuildInvoice(prefix string, num int, def Invoice, oldDate bool) (Invoice, e
 	res := Invoice{}
 	res.Client = askString("Client Name?", def.Client, nil)
 	res.Address = askString("Client Address", def.Address, nil)
+	res.ID = fmt.Sprintf("%s%d", prefix, num)
+	res.Ref = askString("Quote Reference?", def.Ref, nil)
+	if res.Ref == "-" {
+		res.Ref = ""
+	}
 
 	if oldDate {
 		res.Date = askDate("Date?", def.Date)
@@ -96,9 +105,50 @@ func (iv Invoice) String() string {
 	return res
 }
 
+func (iv Invoice) Cost() money.M {
+	var res money.M = 0
+	for _, v := range iv.Jobs {
+		res += v.Cost()
+	}
+	return res
+}
+
+func (iv Invoice) OneLine() string {
+	res := iv.ID + ":" + iv.Client + "," + iv.Date.Format(IV_DATE) + ",£" + iv.Cost().String()
+	return res
+}
+
+func lcSubstring(s1, s2 string) bool {
+	s1 = strings.ToLower(s1)
+	if strings.Contains(s1, s2) {
+		return true
+	}
+	return false
+
+}
+
+func (iv Invoice) FilterString(s string) bool {
+	s = strings.ToLower(s)
+	if lcSubstring(iv.Client, s) {
+		return true
+	}
+	if lcSubstring(iv.Address, s) {
+		return true
+	}
+	for _, v := range iv.Jobs {
+		if lcSubstring(v.Description, s) {
+			return true
+		}
+		if lcSubstring(v.UnitType, s) {
+			return true
+		}
+	}
+	return false
+}
+
 func LoadInvoices(fname string) ([]Invoice, error) {
 	jdata, err := ioutil.ReadFile(fname)
-	var res []Invoice
+	var res []Invoice = make([]Invoice, 0)
 
 	if err != nil {
 		fmt.Println("Could not load file '" + fname + "'")
@@ -119,6 +169,16 @@ func LoadInvoices(fname string) ([]Invoice, error) {
 	}
 	return res, nil
 
+}
+
+func FilterInvoices(invoices []Invoice, filter string) []Invoice {
+	res := []Invoice{}
+	for _, v := range invoices {
+		if v.FilterString(filter) {
+			res = append(res, v)
+		}
+	}
+	return res
 }
 
 func SaveInvoices(invoices []Invoice, fname string) error {
