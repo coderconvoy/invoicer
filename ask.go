@@ -132,9 +132,8 @@ func askMoney(question string, def string) money.M {
 	return res
 }
 
-func askDate(question string) time.Time {
+func askDate(question string, def time.Time) time.Time {
 	var res time.Time
-	def := time.Now().Format("02/01/06")
 	askAny(question, def, func(s string) error {
 		r, err := time.Parse("02/01/06", s)
 		if err != nil {

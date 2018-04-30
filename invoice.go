@@ -59,11 +59,16 @@ func (j Job) String() string {
 }
 
 //Ask the user for details of invoice they want.
-func BuildInvoice(prefix string, num int, def Invoice) (Invoice, error) {
+func BuildInvoice(prefix string, num int, def Invoice, oldDate bool) (Invoice, error) {
 	res := Invoice{}
 	res.Client = askString("Client Name?", def.Client, nil)
 	res.Address = askString("Client Address", def.Address, nil)
-	res.Date = askDate("Date?")
+
+	if oldDate {
+		res.Date = askDate("Date?", def.Date)
+	} else {
+		res.Date = askDate("Date?", time.Now())
+	}
 
 	for i := 0; i < 10; i++ {
 		if len(def.Jobs) > i {
